@@ -1,0 +1,23 @@
+#org: UmairButt
+app: gv-preloading-pdf
+service: gv-preloading-pdf
+#frameworkVersion: '3'
+provider:
+  name: aws
+  runtime: nodejs16.x
+  timeout: 60
+
+plugins:
+  - serverless-offline
+
+functions:
+  api:
+    handler: handler.handler
+    environment: ${file(env.${opt:stage, self:provider.stage}.json)}
+    events:
+      - http:
+          path: /preload-pdf
+          method: POST
+          cors:
+            origin: '*' #<-- Specify allowed origin
+            headers: '*'
