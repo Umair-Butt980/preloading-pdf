@@ -2,72 +2,60 @@ const serverless = require("serverless-http");
 const express = require("express");
 const app = express();
 var bodyParser = require("body-parser");
+const { envConfig } = require("./config");
+
 
 //Above this are third party imports
+const { responseHeader } = require("./middleware/index");
 app.use(responseHeader);
 app.use(bodyParser.json());
 app.use(express.json());
 
-app.post("/reply-facebook-reviews", async (req, res, next) => {
+app.post("/preload-pdf", async (req, res, next) => {
+  console.log(req.body, "<++++This is body of the params======>");
   try {
     if (
-      req.body.store_id == null ||
-      req.body.store_id == undefined ||
-      req.body.store_id == ""
+      req.body.params == null ||
+      req.body.params == undefined ||
+      req.body.params == ""
     ) {
       return res.status(400).json({
-        message: "Store Id cannot be null or undefined",
+        message: "params cannot be null or undefined",
       });
     }
-    if (
-      req.body.message == null ||
-      req.body.message == undefined ||
-      req.body.message == ""
-    ) {
-      return res.status(400).json({
-        message: "Message cannot be null or undefined",
-      });
-    }
-    if (
-      req.body.openGraphStoryId == null ||
-      req.body.openGraphStoryId == undefined ||
-      req.body.openGraphStoryId == ""
-    ) {
-      return res.status(400).json({
-        message: "reviewId cannot be null or undefined",
-      });
-    }
-    let findUser = await findUserFromStoreId(req.body.store_id);
-    // let fbPageId = findUser.fb_page_id;
-    let pageAccessToken = findUser.page_access_token;
 
-    //calling the Facebook comment api
-    let fbComment = await axios.post(
-      `https://graph.facebook.com/v12.0/${req.body.openGraphStoryId}/comments`,
-      {
-        message: req.body.message,
-        access_token: pageAccessToken,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Cookie": "sb=BN6qYm9Iu3sniXEuFdcL941K",
-        },
-      }
-    );
-     if (fbComment.data != undefined) {
-       return res.status(200).json({
-         message: "Successfully replied to the review ",
-         details: fbComment.data,
-       });
-     } else {
-       return res.status(400).json({
-         message: "Something went wrong",
-         details: null,
-       });
-     }
+    const uri = params.imageUrl;
+    const pageCount = params.metaData.page_count;
+    const promises = [];
+
+    // creating hash metaData for all the pages
+    const resultHash = {};
+    for (let i = pageCount; i > 0; i--) {
+      const promise = axios.get(
+        `${envConfig.DEV_CDN_URL}${uri}?fm=json&page=${i}`
+      );
+      promises.push(promise);
+    }
+    return Promise.allSettled(promises)
+      .then((results) => {
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            const { PixelHeight, PixelWidth } = result.value.data;
+            resultHash[index] = { h: PixelHeight, w: PixelWidth };
+          } else {
+            console.log(`API call ${index + 1} failed:`, result.reason);
+            // logger.error("API call ${index + 1} failed:", result.reason);
+          }
+        });
+        console.log(resultHash, "<=====resultHash=======>");
+        return resultHash;
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
 });
+
 module.exports.handler = serverless(app);
