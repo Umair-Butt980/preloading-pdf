@@ -7,6 +7,7 @@ const { envConfig } = require("./config");
 
 //Above this are third party imports
 const { responseHeader } = require("./middleware/index");
+const { default: axios } = require("axios");
 app.use(responseHeader);
 app.use(bodyParser.json());
 app.use(express.json());
@@ -14,18 +15,18 @@ app.use(express.json());
 app.post("/preload-pdf", async (req, res, next) => {
   console.log(req.body, "<++++This is body of the params======>");
   try {
-    if (
-      req.body.params == null ||
-      req.body.params == undefined ||
-      req.body.params == ""
-    ) {
-      return res.status(400).json({
-        message: "params cannot be null or undefined",
-      });
-    }
+    // if (
+    //   req.body.params == null ||
+    //   req.body.params == undefined ||
+    //   req.body.params == ""
+    // ) {
+    //   return res.status(400).json({
+    //     message: "params cannot be null or undefined",
+    //   });
+    // }
 
-    const uri = params.imageUrl;
-    const pageCount = params.metaData.page_count;
+    const uri = req.body.imageUrl;
+    const pageCount = req.body.metaData.page_count;
     const promises = [];
 
     // creating hash metaData for all the pages
@@ -48,7 +49,7 @@ app.post("/preload-pdf", async (req, res, next) => {
           }
         });
         console.log(resultHash, "<=====resultHash=======>");
-        return resultHash;
+        // return resultHash;
       })
       .catch((error) => {
         console.error(error);
